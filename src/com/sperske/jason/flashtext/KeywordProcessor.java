@@ -96,147 +96,91 @@ public class KeywordProcessor {
 		this._terms_in_trie += 1;
 	}
 
-	public Set<String> extractKeywords(String sentance) {
-		return extractKeywords(sentance.chars().mapToObj(c -> (char) c));
-	}
-	public Set<String> extractKeywords(Stream<Character> chars) {
-		return chars.collect(new Extractor(this.rootNode, this.CASE_SENSITIVE));
-	}
+	public Set<String> extractKeywords(String sentence) {
+		HashSet<String> foundKeywords = new HashSet<>();
+		if (sentence == null || sentence.isEmpty()) return foundKeywords;
 
-	class Extractor implements Collector<Character, Set<String>, Set<String>> {
-		private KeywordTrieNode currentNode;
-		private final KeywordTrieNode rootNode;
-		private final boolean CASE_SENSITIVE;
-		private Set<String> keywords;
+		if (!this.CASE_SENSITIVE)
+			sentence = sentence.toLowerCase();
+		char[] charArray = sentence.toCharArray();
+		int i = 0;
+		while (i < charArray.length) {
+			char c = charArray[i];
 
-		public Extractor(KeywordTrieNode rootNode, boolean caseSensitive) {
-			this.rootNode = rootNode;
-			this.currentNode = rootNode;
-			this.CASE_SENSITIVE = caseSensitive;
-			this.keywords = new HashSet<>();
-		}
+			KeywordTrieNode nextNode = this.rootNode.get(c);
+			if (nextNode == null) {
+				i++;
+				continue;
+			}
 
-		@Override
-		public BiConsumer<Set<String>, Character> accumulator() {
-			return (keywords, c) -> {
-				if (!this.CASE_SENSITIVE) {
-					c = Character.toLowerCase(c);
+			Integer findSourceLength = null;
+			String findWord = null;
+			int j = i;
+			while (nextNode != null) {
+				if (nextNode.getKeyword() != null) {
+					findSourceLength = nextNode.getKeyword().length();
+					findWord = nextNode.getCleanName();
 				}
-				KeywordTrieNode node = currentNode.get(c);
-				if (node == null) {
-					currentNode = this.rootNode;
-				} else {
-					currentNode = node;
-					String keyword = currentNode.get();
-					if (keyword != null) {
-						keywords.add(keyword);
-					}
-				}
-			};
-		}
 
-		@Override
-		public Set<Characteristics> characteristics() {
-			return Collections.emptySet();
-		}
+				if (j == charArray.length - 1) break;
 
-		@Override
-		public BinaryOperator<Set<String>> combiner() {
-			return (a, b) -> a;
-		}
+				c = charArray[++j];
+				nextNode = nextNode.get(c);
+			}
 
-		@Override
-		public Function<Set<String>, Set<String>> finisher() {
-			return (keywords) -> keywords;
-		}
+			if (findSourceLength == null) {
+				i++;
+				continue;
+			}
 
-		@Override
-		public Supplier<Set<String>> supplier() {
-			return () -> this.keywords;
+			foundKeywords.add(findWord);
+			i += findSourceLength;
 		}
-
+		return foundKeywords;
 	}
 
-	public String replace(String sentance) {
-		return replace(sentance.chars().mapToObj(c -> (char) c));
-	}
-	private String replace(Stream<Character> chars) {
-		return chars.collect(new Replacer(this.rootNode, this.CASE_SENSITIVE));
-	}
+	public String replace(String sentence) {
+		if (sentence == null || sentence.isEmpty()) return sentence;
 
-	// Design adapted from https://codereview.stackexchange.com/a/199677/9162
-	class Replacer implements Collector<Character, StringBuffer, String> {
-		private StringBuffer out;
-		private StringBuffer buffer;
-		private KeywordTrieNode currentNode;
-		private final KeywordTrieNode rootNode;
-		private final boolean CASE_SENSITIVE;
+		if (!this.CASE_SENSITIVE)
+			sentence = sentence.toLowerCase();
+		StringBuilder sb = new StringBuilder();
+		char[] charArray = sentence.toCharArray();
+		int i = 0;
+		while (i < charArray.length) {
+			char c = charArray[i];
 
-		public Replacer(KeywordTrieNode rootNode, boolean caseSensitive) {
-			this.rootNode = rootNode;
-			this.currentNode = rootNode;
-			this.out = new StringBuffer();
-			this.buffer = new StringBuffer();
-			this.CASE_SENSITIVE = caseSensitive;
-		}
+			KeywordTrieNode nextNode = this.rootNode.get(c);
+			if (nextNode == null) {
+				i++;
+				sb.append(c);
+				continue;
+			}
 
-		@Override
-		public BiConsumer<StringBuffer, Character> accumulator() {
-			return (out, c) -> {
-				char match_c = c;
-				if (!this.CASE_SENSITIVE) {
-					match_c = Character.toLowerCase(c);
-				}
-				KeywordTrieNode node = currentNode.get(match_c);
-				if (node != null) {
-					buffer.append(c);
-					currentNode = node;
-					return;
+			Integer findSourceLength = null;
+			String findWord = null;
+			int j = i;
+			while (nextNode != null) {
+				if (nextNode.getKeyword() != null) {
+					findSourceLength = nextNode.getKeyword().length();
+					findWord = nextNode.getCleanName();
 				}
 
-				String keyword = currentNode.get();
-				out.append(keyword != null ? keyword : buffer);
-				buffer = new StringBuffer();
-				currentNode = this.rootNode;
+				if (j == charArray.length - 1) break;
 
-				// re-match root node
-				node = this.rootNode.get(match_c);
-				if (node != null) {
-					buffer.append(c);
-					currentNode = node;
-				} else {
-					out.append(c);
-				}
-			};
-		}
+				nextNode = nextNode.get(charArray[++j]);
+			}
 
-		@Override
-		public Set<Characteristics> characteristics() {
-			return Collections.emptySet();
-		}
+			if (findSourceLength == null) {
+				i++;
+				sb.append(c);
+				continue;
+			}
 
-		@Override
-		public BinaryOperator<StringBuffer> combiner() {
-			return (a, b) -> a;
+			sb.append(findWord);
+			i += findSourceLength;
 		}
-
-		@Override
-		public Function<StringBuffer, String> finisher() {
-			return (out) -> {
-				String keyword = currentNode.get();
-				if (keyword == null) {
-					out.append(buffer);
-				} else {
-					out.append(keyword);
-				}
-				return out.toString();
-			};
-		}
-
-		@Override
-		public Supplier<StringBuffer> supplier() {
-			return () -> this.out;
-		}
+		return sb.toString();
 	}
 
 	public String toString() {

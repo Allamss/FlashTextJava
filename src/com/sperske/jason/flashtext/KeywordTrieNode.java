@@ -68,7 +68,15 @@ public class KeywordTrieNode {
 		}
 		return this;
 	}
-	
+
+	public String getKeyword() {
+		return keyword;
+	}
+
+	public String getCleanName() {
+		return clean_name;
+	}
+
 	@Override
 	public String toString() {
 		return toIndentedString("");

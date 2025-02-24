@@ -1,6 +1,8 @@
 package com.sperske.jason.flashtext;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -59,5 +61,18 @@ class KeywordReplacerTests {
 		processor.addKeyword("cd", "34");
 
 		assertEquals("a34", processor.replace("acd"));
+	}
+
+	@Test
+	void shouldReplaceAndExtractInTheMiddleOfSentence() {
+		KeywordProcessor processor = new KeywordProcessor();
+		processor.addKeyword("abc", "123");
+		processor.addKeyword("bd", "24");
+
+		Set<String> keywords = processor.extractKeywords("abd");
+        assertEquals(1, keywords.size());
+		assertTrue(keywords.contains("24"));
+
+		assertEquals("a24", processor.replace("abd"));
 	}
 }
